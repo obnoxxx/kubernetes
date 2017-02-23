@@ -379,7 +379,7 @@ type provisionerConfig struct {
 	gidMin          int
 	gidMax          int
 	volumeType      gapi.VolumeDurabilityInfo
-	volume          string
+	mode            string
 }
 
 type glusterfsVolumeProvisioner struct {
@@ -601,7 +601,7 @@ func (d *glusterfsVolumeDeleter) Delete() error {
 		return fmt.Errorf("glusterfs: failed to create glusterfs rest client, REST server authentication failed")
 	}
 	// TODO: Once the delete function is available in heketi, call that api client.
-	if d.provisionerConfig.volume == "rwo" {
+	if d.provisionerConfig.mode == "block" {
 		glog.V(1).Infof("glusterfs: No delete function written for RWO volumes")
 		return nil
 	}
@@ -669,7 +669,7 @@ func (r *glusterfsVolumeProvisioner) Provision() (*v1.PersistentVolume, error) {
 	}
 	r.provisionerConfig = *cfg
 	glog.V(4).Infof("glusterfs: creating volume with configuration %+v", r.provisionerConfig)
-	if cfg.volume != "rwo" {
+	if cfg.mode != "block" {
 		gidTable, err := r.plugin.getGidTable(scName, cfg.gidMin, cfg.gidMax)
 		if err != nil {
 			return nil, fmt.Errorf("glusterfs: failed to get gidTable: %v", err)
@@ -964,6 +964,7 @@ func parseClassParameters(params map[string]string, kubeClient clientset.Interfa
 
 	cfg.gidMin = defaultGidMin
 	cfg.gidMax = defaultGidMax
+	cfg.mode = "file"
 
 	authEnabled := true
 	parseVolumeType := ""
@@ -979,11 +980,11 @@ func parseClassParameters(params map[string]string, kubeClient clientset.Interfa
 			cfg.secretName = v
 		case "secretnamespace":
 			cfg.secretNamespace = v
-		case "volume":
-			if v == "rwo" || v == "rwx" {
-				cfg.volume = v
+		case "mode":
+			if v == "block" || v == "file" {
+				cfg.mode = v
 			} else {
-				return nil, fmt.Errorf("glusterfs: invalid value %q for volume plugin %s", k, glusterfsPluginName)
+				return nil, fmt.Errorf("glusterfs: invalid value %q for storageclass parameter %v for volume plugin %s", v, k, glusterfsPluginName)
 			}
 		case "clusterid":
 			if len(v) != 0 {
