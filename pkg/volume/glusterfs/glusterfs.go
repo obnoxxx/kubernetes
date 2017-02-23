@@ -722,6 +722,17 @@ func (r *glusterfsVolumeProvisioner) GetISCSIPV(iscsi *v1.ISCSIVolumeSource, siz
 	pv.Spec.PersistentVolumeReclaimPolicy = r.options.PersistentVolumeReclaimPolicy
 	pv.Spec.AccessModes = r.options.PVC.Spec.AccessModes
 	if len(pv.Spec.AccessModes) == 0 {
+		// TODO: need the iscsi access modes here! TODO
+		//something similar to this?
+		/*
+		pluginMgr := volume.VolumePluginMgr{}
+		plugMgr.InitPlugins(ProbeVolumePlugins(), volumetest.NewFakeVolumeHost(tmpDir, nil, nil))
+		iscsiPlugin, err := plugMgr.FindPluginByName("kubernetes.io/iscsi")
+		if err != nil {
+			boo
+		}
+		pv.Spec.AccessModes = iscsiPlugin.GetAccessModes()
+		*/
 		pv.Spec.AccessModes = r.plugin.GetAccessModes()
 	}
 	pv.Annotations = map[string]string{"pv.kubernetes.io/provisioned-by": glusterfsPluginName}
