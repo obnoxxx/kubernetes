@@ -738,8 +738,8 @@ func (p *glusterfsVolumeProvisioner) GetClusterNodes(cli *gcli.Client, cluster s
 		return nil, fmt.Errorf("failed to get cluster details: %v", err)
 	}
 
-	// For the dynamically provisioned volume, we gather the list of node IPs
-	// of the cluster on which provisioned volume belongs to, as there can be multiple
+	// For the dynamically provisioned volume, we gather the list of node
+	// IPs of the cluster which hosts the volume, as there can be multiple
 	// clusters.
 	for _, node := range clusterinfo.Nodes {
 		nodei, err := cli.NodeInfo(string(node))
