@@ -379,7 +379,7 @@ type provisionerConfig struct {
 	gidMin          int
 	gidMax          int
 	volumeType      gapi.VolumeDurabilityInfo
-	mode            string
+	volumeMode      string
 }
 
 type glusterfsVolumeProvisioner struct {
@@ -601,7 +601,7 @@ func (d *glusterfsVolumeDeleter) Delete() error {
 		return fmt.Errorf("glusterfs: failed to create glusterfs rest client, REST server authentication failed")
 	}
 	// TODO: Once the delete function is available in heketi, call that api client.
-	if d.provisionerConfig.mode == "block" {
+	if d.provisionerConfig.volumeMode == "block" {
 		glog.V(1).Infof("glusterfs: No delete function written for RWO volumes")
 		return nil
 	}
@@ -667,9 +667,28 @@ func (r *glusterfsVolumeProvisioner) Provision() (*v1.PersistentVolume, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	pvcAccessModes = r.options.PVC.Spec.AccessModes
+
+	doBlock = false
+	if cfg.volumeMode == "block" {
+		doBlock == true
+		if len(pvcAccessModes) == 1) && contains(pvcAccessModes, v1.ReadWriteMany) {
+			glog.V(4).Infof("glusterfs: ReadWriteMany not supported for gluster-block volumes")
+			return nil, fmt.Errorf("glusterfs: ReadWriteMany not supported for gluster-block volumes")
+		}
+	} else if cfg.volumeMode == "file" {
+		doBlock == false
+	} else if cfg.volumeMode == "pvc" {
+		if (len(pvcAccessModes) == 1) && (contains(pvcAccessModes, v1.ReadWriteOnce) {
+			doBlock = true
+		}
+	}
+
 	r.provisionerConfig = *cfg
 	glog.V(4).Infof("glusterfs: creating volume with configuration %+v", r.provisionerConfig)
-	if cfg.mode != "block" {
+
+	if !doBlock {
 		gidTable, err := r.plugin.getGidTable(scName, cfg.gidMin, cfg.gidMax)
 		if err != nil {
 			return nil, fmt.Errorf("glusterfs: failed to get gidTable: %v", err)
@@ -964,7 +983,7 @@ func parseClassParameters(params map[string]string, kubeClient clientset.Interfa
 
 	cfg.gidMin = defaultGidMin
 	cfg.gidMax = defaultGidMax
-	cfg.mode = "file"
+	cfg.volumeMode = "file"
 
 	authEnabled := true
 	parseVolumeType := ""
@@ -980,9 +999,9 @@ func parseClassParameters(params map[string]string, kubeClient clientset.Interfa
 			cfg.secretName = v
 		case "secretnamespace":
 			cfg.secretNamespace = v
-		case "mode":
-			if v == "block" || v == "file" {
-				cfg.mode = v
+		case "volumemode":
+			if v == "block" || v == "file" || v == "pvc" {
+				cfg.volumeMode = v
 			} else {
 				return nil, fmt.Errorf("glusterfs: invalid value %q for storageclass parameter %v for volume plugin %s", v, k, glusterfsPluginName)
 			}
