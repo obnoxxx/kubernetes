@@ -669,17 +669,20 @@ func (r *glusterfsVolumeProvisioner) Provision() (*v1.PersistentVolume, error) {
 	}
 	r.provisionerConfig = *cfg
 	glog.V(4).Infof("glusterfs: creating volume with configuration %+v", r.provisionerConfig)
-	gidTable, err := r.plugin.getGidTable(scName, cfg.gidMin, cfg.gidMax)
-	if err != nil {
-		return nil, fmt.Errorf("glusterfs: failed to get gidTable: %v", err)
-	}
-	gid, _, err := gidTable.AllocateNext()
-	if err != nil {
-		glog.Errorf("glusterfs: failed to reserve gid from table: %v", err)
-		return nil, fmt.Errorf("glusterfs: failed to reserve gid from table: %v", err)
-	}
-	glog.V(2).Infof("glusterfs: got gid [%d] for PVC %s", gid, r.options.PVC.Name)
 	if cfg.volume != "rwo" {
+		gidTable, err := r.plugin.getGidTable(scName, cfg.gidMin, cfg.gidMax)
+		if err != nil {
+			return nil, fmt.Errorf("glusterfs: failed to get gidTable: %v", err)
+		}
+
+		gid, _, err := gidTable.AllocateNext()
+		if err != nil {
+			glog.Errorf("glusterfs: failed to reserve gid from table: %v", err)
+			return nil, fmt.Errorf("glusterfs: failed to reserve gid from table: %v", err)
+		}
+
+		glog.V(2).Infof("glusterfs: got gid [%d] for PVC %s", gid, r.options.PVC.Name)
+
 		glusterfs, sizeGB, err := r.CreateVolume(gid)
 		if err != nil {
 			if release_err := gidTable.Release(gid); release_err != nil {
@@ -697,6 +700,7 @@ func (r *glusterfsVolumeProvisioner) Provision() (*v1.PersistentVolume, error) {
 		}
 		pv = r.GetISCSIPV(iscsi, sizeGB)
 	}
+
 	return pv, nil
 }
 
