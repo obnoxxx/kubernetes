@@ -654,11 +654,14 @@ func (d *glusterfsVolumeDeleter) Delete() error {
 func (r *glusterfsVolumeProvisioner) Provision() (*v1.PersistentVolume, error) {
 	var err error
 	var pv *v1.PersistentVolume
+
 	if r.options.PVC.Spec.Selector != nil {
 		glog.V(4).Infof("glusterfs: not able to parse your claim Selector")
 		return nil, fmt.Errorf("glusterfs: not able to parse your claim Selector")
 	}
+
 	glog.V(4).Infof("glusterfs: Provison VolumeOptions %v", r.options)
+
 	scName := storageutil.GetClaimStorageClass(r.options.PVC)
 	cfg, err := parseClassParameters(r.options.Parameters, r.plugin.host.GetKubeClient())
 	if err != nil {
@@ -685,14 +688,14 @@ func (r *glusterfsVolumeProvisioner) Provision() (*v1.PersistentVolume, error) {
 			glog.Errorf("glusterfs: create volume err: %v.", err)
 			return nil, fmt.Errorf("glusterfs: create volume err: %v.", err)
 		}
-		pv, err = r.GetGlusterPV(glusterfs, sizeGB, gid)
+		pv = r.GetGlusterPV(glusterfs, sizeGB, gid)
 	} else {
 		iscsi, sizeGB, err := r.CreateBlockVolume()
 		if err != nil {
 			glog.Errorf("glusterfs: create volume err: %v.", err)
 			return nil, fmt.Errorf("glusterfs: create volume err: %v.", err)
 		}
-		pv, err = r.GetISCSIPV(iscsi, sizeGB)
+		pv = r.GetISCSIPV(iscsi, sizeGB)
 	}
 	return pv, nil
 }
@@ -710,7 +713,7 @@ func (r *glusterfsVolumeProvisioner) GetGlusterPV(glusterfs *v1.GlusterfsVolumeS
 	pv.Spec.Capacity = v1.ResourceList{
 		v1.ResourceName(v1.ResourceStorage): resource.MustParse(fmt.Sprintf("%dGi", sizeGB)),
 	}
-	return pv, nil
+	return pv
 }
 
 func (r *glusterfsVolumeProvisioner) GetISCSIPV(iscsi *v1.ISCSIVolumeSource, sizeGB int) (*v1.PersistentVolume, error) {
@@ -725,7 +728,7 @@ func (r *glusterfsVolumeProvisioner) GetISCSIPV(iscsi *v1.ISCSIVolumeSource, siz
 	pv.Spec.Capacity = v1.ResourceList{
 		v1.ResourceName(v1.ResourceStorage): resource.MustParse(fmt.Sprintf("%dGi", sizeGB)),
 	}
-	return pv, nil
+	return pv
 }
 
 func (p *glusterfsVolumeProvisioner) GetClusterNodes(cli *gcli.Client, cluster string) (dynamicHostIps []string, err error) {
